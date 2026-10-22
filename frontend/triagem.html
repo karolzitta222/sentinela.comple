@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Triagem Hospitalar</title>
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        body {
+            background: #edf0ff;
+            color: #66558f;
+        }
+
+        .triagem-container {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 25px;
+            background: white;
+            border: 2px solid #e0d5ff;
+            border-radius: 24px;
+        }
+
+        .topo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        h1, h2 {
+            color: #8672c7;
+        }
+
+        .fila {
+            margin: 24px 0;
+            padding: 20px;
+            background: #f8f5ff;
+            border: 1px solid #e0d5ff;
+            border-radius: 20px;
+        }
+
+        .paciente-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 10px 0;
+            padding: 14px;
+            background: white;
+            border: 1px solid #ddd3ff;
+            border-radius: 12px;
+        }
+
+        input, select, textarea, button {
+            font: inherit;
+        }
+
+        input, select, textarea {
+            display: block;
+            width: 100%;
+            margin: 8px 0 16px;
+            padding: 12px;
+            border: 1px solid #d9ccff;
+            border-radius: 12px;
+            background: #fff;
+        }
+
+        button {
+            padding: 11px 16px;
+            border: 0;
+            border-radius: 12px;
+            background: #dcecff;
+            color: #554781;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            filter: brightness(.97);
+        }
+
+        .mensagem {
+            margin-top: 12px;
+            white-space: pre-wrap;
+        }
+
+        .campo {
+            margin-top: 16px;
+        }
+
+        @media (max-width: 600px) {
+            .triagem-container {
+                margin: 10px;
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="triagem-container">
+        <div class="topo">
+            <h1>Triagem Hospitalar</h1>
+            <button type="button" onclick="abrirTV()">
+                Abrir tela da TV
+            </button>
+        </div>
+
+        <section class="fila">
+            <h2>Pacientes aguardando triagem</h2>
+            <div id="fila-pacientes">Carregando pacientes...</div>
+            <button type="button" onclick="carregarPacientes()">
+                Atualizar lista
+            </button>
+        </section>
+
+        <hr>
+
+        <h2>Registrar triagem</h2>
+
+        <form id="form-triagem">
+            <label for="nome">Nome do paciente</label>
+            <input id="nome" required
+                   placeholder="Selecione um paciente ou digite o nome">
+
+            <input id="pacienteId" type="hidden">
+
+            <label for="sintoma">Sintoma principal</label>
+            <select id="sintoma" required>
+                <option value="">Selecione o sintoma</option>
+                <option value="Febre">Febre</option>
+                <option value="Dor">Dor</option>
+                <option value="Falta de ar">Falta de ar</option>
+                <option value="Tosse">Tosse</option>
+                <option value="Náusea">Náusea</option>
+                <option value="Vômito">Vômito</option>
+                <option value="Ferimento">Ferimento</option>
+                <option value="Outro">Outro</option>
+            </select>
+
+            <label for="temp">Temperatura (°C)</label>
+            <input id="temp" type="number" step="0.1"
+                   placeholder="Ex.: 37.5">
+
+            <label for="alergia">Alergias</label>
+            <input id="alergia" placeholder="Informe alergias conhecidas">
+
+            <label for="observacao">Observações</label>
+            <textarea id="observacao" rows="3"
+                      placeholder="Observações adicionais"></textarea>
+
+            <button type="submit">Salvar triagem</button>
+        </form>
+
+        <div id="mensagem" class="mensagem" role="status"></div>
+    </main>
+
+    <script>
+        const fila = document.getElementById("fila-pacientes");
+        const mensagem = document.getElementById("mensagem");
+
+        function abrirTV() {
+            window.open("/tv.html", "_blank");
+        }
+
+        async function carregarPacientes() {
+            try {
+                const resposta = await fetch("/pacientes", {
+                    cache: "no-store"
+                });
+
+                if (!resposta.ok) {
+                    throw new Error("Erro HTTP " + resposta.status);
+                }
+
+                const pacientes = await resposta.json();
+                const aguardando = pacientes.filter(
+                    p => p.status === "triagem"
+                );
+
+                fila.replaceChildren();
+
+                if (aguardando.length === 0) {
+                    fila.textContent =
+                        "Nenhum paciente aguardando triagem.";
+                    return;
+                }
+
+                aguardando.forEach(paciente => {
+                    const item = document.createElement("div");
+                    item.className = "paciente-item";
+
+                    const texto = document.createElement("span");
+                    texto.textContent =
+                        `${paciente.nome} — ${paciente.tipo || "Atendimento"}`;
+
+                    const selecionar = document.createElement("button");
+                    selecionar.type = "button";
+                    selecionar.textContent = "Selecionar";
+
+                    selecionar.addEventListener("click", () => {
+                        document.getElementById("nome").value =
+                            paciente.nome;
+                        document.getElementById("pacienteId").value =
+                            paciente.id;
+                        mensagem.textContent =
+                            "Paciente selecionado: " + paciente.nome;
+                    });
+
+                    const chamar = document.createElement("button");
+                    chamar.type = "button";
+                    chamar.textContent = "Chamar na TV";
+
+                    chamar.addEventListener("click", () => {
+                        chamarNaTV(paciente.nome);
+                    });
+
+                    item.append(texto, selecionar, chamar);
+                    fila.appendChild(item);
+                });
+            } catch (erro) {
+                console.error(erro);
+                fila.textContent =
+                    "Erro ao carregar pacientes. Confira se o servidor está ligado.";
+            }
+        }
+
+        async function chamarNaTV(nome) {
+            mensagem.textContent = "Enviando chamada para a TV...";
+
+            try {
+                const resposta = await fetch("/tv/chamar", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        localTipo: "GUICHÊ",
+                        localNumero: "01",
+                        paciente: nome
+                    })
+                });
+
+                const dados = await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(dados.erro || "Não foi possível chamar.");
+                }
+
+                mensagem.textContent =
+                    `Paciente ${nome} chamado na TV!`;
+
+            } catch (erro) {
+                console.error("Erro ao chamar na TV:", erro);
+                mensagem.textContent =
+                    "Não foi possível chamar o paciente. Confira o servidor.";
+            }
+        }
+
+        document.getElementById("form-triagem")
+            .addEventListener("submit", async event => {
+                event.preventDefault();
+                mensagem.textContent = "Salvando triagem...";
+
+                const temperaturaTexto =
+                    document.getElementById("temp").value;
+
+                const temperatura = temperaturaTexto === ""
+                    ? null
+                    : Number(temperaturaTexto);
+
+                const dados = {
+                    nome: document.getElementById("nome").value.trim(),
+                    pacienteId:
+                        document.getElementById("pacienteId").value || null,
+                    sintoma: document.getElementById("sintoma").value,
+                    temperatura,
+                    alergia: document.getElementById("alergia").value.trim(),
+                    observacao:
+                        document.getElementById("observacao").value.trim()
+                };
+
+                try {
+                    const resposta = await fetch("/triagem", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(dados)
+                    });
+
+                    const resultado = await resposta.json();
+
+                    if (!resposta.ok) {
+                        throw new Error(
+                            resultado.erro || "Erro ao salvar triagem."
+                        );
+                    }
+
+                    mensagem.textContent =
+                        `Triagem salva! Classificação registrada: ${resultado.risco}.`;
+
+                    event.target.reset();
+                    document.getElementById("pacienteId").value = "";
+
+                    carregarPacientes();
+
+                } catch (erro) {
+                    console.error(erro);
+                    mensagem.textContent = erro.message;
+                }
+            });
+
+        carregarPacientes();
+        setInterval(carregarPacientes, 10000);
+    </script>
+</body>
+</html>
